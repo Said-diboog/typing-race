@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeRace 5P | Carrera de Mecanografía</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header class="top-header">
+      <h1>⚡ Code<span>Race</span> 5P</h1>
+      <p class="subtitle">Ingeniería de Software y Sistemas — Competencia de Velocidad</p>
+    </header>
+
+    <!-- PANTALLA 1: LOBBY / CONFIGURACIÓN -->
+    <section id="lobby-screen" class="card">
+      <h2>Configura tu corredor</h2>
+
+      <div class="form-group">
+        <label for="player-name">Tu Apodo:</label>
+        <input type="text" id="player-name" maxlength="15" placeholder="Ej. DevMaster" />
+      </div>
+
+      <div class="form-group">
+        <label>Elige tu Avatar:</label>
+        <div class="avatar-grid" id="avatar-selector">
+          <button type="button" class="avatar-btn selected" data-avatar="🚀">🚀<span>Nave</span></button>
+          <button type="button" class="avatar-btn" data-avatar="🤖">🤖<span>Bot</span></button>
+          <button type="button" class="avatar-btn" data-avatar="🐱">🐱<span>Hacker</span></button>
+          <button type="button" class="avatar-btn" data-avatar="⚡">⚡<span>Flash</span></button>
+          <button type="button" class="avatar-btn" data-avatar="🐉">🐉<span>Dragón</span></button>
+          <button type="button" class="avatar-btn" data-avatar="👾">👾<span>Alien</span></button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Modo de Carrera:</label>
+        <div class="mode-grid">
+          <button type="button" class="mode-btn selected" data-mode="normal">
+            <strong>📝 Escritura Normal</strong>
+            <small>Textos con tildes, mayúsculas, comas y puntos.</small>
+          </button>
+          <button type="button" class="mode-btn" data-mode="code">
+            <strong>💻 Modo Programación</strong>
+            <small>Bucles for/while, sumas y algoritmos en Python, C++ y Java.</small>
+          </button>
+        </div>
+      </div>
+
+      <button id="start-btn" class="primary-btn">🏁 ¡Entrar a la Pista!</button>
+    </section>
+
+    <!-- PANTALLA 2: PISTA DE CARRERA -->
+    <section id="race-screen" class="card hidden">
+      <div class="stats-bar">
+        <div class="stat-box">
+          <span class="stat-label">MODO</span>
+          <span id="current-mode-label" class="stat-value">Normal</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">VELOCIDAD</span>
+          <span id="wpm-display" class="stat-value">0 PPM</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">PRECISIÓN</span>
+          <span id="accuracy-display" class="stat-value">100%</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">RACHA</span>
+          <span id="streak-display" class="stat-value">0 🔥</span>
+        </div>
+      </div>
+
+      <!-- PISTA DE 5 CARRILES -->
+      <div class="track-container" id="track-container"></div>
+
+      <!-- ÁREA DE TEXTO A ESCRIBIR -->
+      <div class="typing-wrapper" id="typing-wrapper">
+        <div id="countdown-overlay" class="countdown-overlay">3</div>
+        <div id="text-display" class="text-display"></div>
+        <textarea
+          id="typing-input"
+          class="hidden-input"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        ></textarea>
+        <p class="hint-text">Haz clic sobre el texto si pierdes el foco • Usa <b>Backspace</b> para corregir errores</p>
+      </div>
+    </section>
+
+    <!-- PANTALLA 3: PODIO FINAL -->
+    <section id="podium-screen" class="card hidden">
+      <h2>🏆 Resultados de la Carrera</h2>
+      <div id="podium-list" class="podium-list"></div>
+      <div class="podium-actions">
+        <button id="play-again-btn" class="primary-btn">🔄 Correr de Nuevo</button>
+        <button id="back-lobby-btn" class="secondary-btn">⚙️ Cambiar Modo / Avatar</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
