@@ -1,4 +1,24 @@
-// Banco de textos ampliado para ambos modos
+// Configuración de Firebase Realtime Database
+const firebaseConfig = {
+  apiKey: "AIzaSyAMY1cpw-QCSdgJAspUykPMihAPxx9Iw1M",
+  authDomain: "animal-type.firebaseapp.com",
+  databaseURL: "https://animal-type-default-rtdb.firebaseio.com",
+  projectId: "animal-type",
+  storageBucket: "animal-type.firebasestorage.app",
+  messagingSenderId: "803472288217",
+  appId: "1:803472288217:web:c3acaf88eb5d360aca51c8",
+  measurementId: "G-NHB8QWKRXS"
+};
+
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+} catch (err) {
+  console.warn("Firebase no disponible, modo offline activo:", err);
+}
+
+// Banco de textos para ambos modos
 const TEXT_BANK = {
   normal: [
     "La programación requiere lógica, paciencia y mucha práctica diaria para resolver problemas reales.",
@@ -29,7 +49,6 @@ const ANIMALS = {
   koala: { label: "Koala", head: "#cbd5e1", body: "#94a3b8", shirt: "#fed7aa", ear: "#64748b", bigEars: true }
 };
 
-// Generador de personajes SVG animados
 function getAnimalSVG(animalKey, pose = "idle") {
   const a = ANIMALS[animalKey] || ANIMALS.leon;
 
@@ -150,14 +169,32 @@ let errorKeystrokes = 0;
 let currentStreak = 0;
 let racers = [];
 
+// Estado multijugador
+let isOnline = false;
+let isHost = false;
+let currentRoomCode = null;
+let myPlayerId = "p_" + Math.random().toString(36).substring(2, 9);
+let roomRef = null;
+let lastSyncTime = 0;
+let currentScreenState = "lobby"; // lobby | waiting | racing | podium
+
 // Elementos DOM
 const lobbyScreen = document.getElementById("lobby-screen");
+const waitingScreen = document.getElementById("waiting-screen");
 const raceScreen = document.getElementById("race-screen");
 const podiumScreen = document.getElementById("podium-screen");
 const trackContainer = document.getElementById("track-container");
 const textDisplay = document.getElementById("text-display");
 const typingInput = document.getElementById("typing-input");
 const countdownOverlay = document.getElementById("countdown-overlay");
+
+function showOnlyScreen(screenEl) {
+  lobbyScreen.classList.add("hidden");
+  waitingScreen.classList.add("hidden");
+  raceScreen.classList.add("hidden");
+  podiumScreen.classList.add("hidden");
+  screenEl.classList.remove("hidden");
+}
 
 // Pintar los 6 avatares animales en el lobby
 document.querySelectorAll(".avatar-preview").forEach(box => {
@@ -187,7 +224,7 @@ function renderCrowd() {
 }
 renderCrowd();
 
-// Sonidos suaves sintetizados
+// Sonidos sintetizados
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playBeep(freq, duration, type = "sine") {
   if (audioCtx.state === "suspended") audioCtx.resume();
@@ -203,7 +240,6 @@ function playBeep(freq, duration, type = "sine") {
   osc.stop(audioCtx.currentTime + duration);
 }
 
-// Función para detener cualquier temporizador activo al salir
 function stopAllTimers() {
   raceActive = false;
   clearInterval(botInterval);
@@ -211,15 +247,30 @@ function stopAllTimers() {
   clearTimeout(typingStopTimer);
 }
 
-function goToLobby() {
-  stopAllTimers();
-  typingInput.blur();
-  podiumScreen.classList.add("hidden");
-  raceScreen.classList.add("hidden");
-  lobbyScreen.classList.remove("hidden");
+function leaveOnlineRoom() {
+  if (roomRef) {
+    roomRef.off();
+    if (isHost) {
+      roomRef.remove();
+    } else {
+      roomRef.child(`players/${myPlayerId}`).remove();
+    }
+    roomRef = null;
+  }
+  isOnline = false;
+  isHost = false;
+  currentRoomCode = null;
 }
 
-// Selección de Animal
+function goToLobby() {
+  stopAllTimers();
+  leaveOnlineRoom();
+  typingInput.blur();
+  currentScreenState = "lobby";
+  showOnlyScreen(lobbyScreen);
+}
+
+// Selección de Animal y Modo
 document.querySelectorAll(".avatar-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".avatar-btn").forEach(b => b.classList.remove("selected"));
@@ -228,7 +279,6 @@ document.querySelectorAll(".avatar-btn").forEach(btn => {
   });
 });
 
-// Selección de Modo
 document.querySelectorAll(".mode-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("selected"));
@@ -237,23 +287,290 @@ document.querySelectorAll(".mode-btn").forEach(btn => {
   });
 });
 
-// Botones de navegación
-document.getElementById("start-btn").addEventListener("click", setupRace);
-document.getElementById("play-again-btn").addEventListener("click", setupRace);
-document.getElementById("new-text-btn").addEventListener("click", setupRace);
+// Botones principales
+document.getElementById("start-solo-btn").addEventListener("click", setupSoloRace);
+document.getElementById("create-room-btn").addEventListener("click", createOnlineRoom);
+document.getElementById("join-room-btn").addEventListener("click", joinOnlineRoom);
+document.getElementById("leave-room-btn").addEventListener("click", goToLobby);
 document.getElementById("abort-race-btn").addEventListener("click", goToLobby);
 document.getElementById("back-lobby-btn").addEventListener("click", goToLobby);
+
+document.getElementById("new-text-btn").addEventListener("click", () => {
+  if (!isOnline) setupSoloRace();
+});
+
+document.getElementById("play-again-btn").addEventListener("click", () => {
+  if (!isOnline) {
+    setupSoloRace();
+  } else if (isHost && roomRef) {
+    // El anfitrión reinicia la sala para todos
+    const pool = TEXT_BANK[selectedMode];
+    const nextText = pool[Math.floor(Math.random() * pool.length)];
+    const resetPlayers = {};
+    racers.forEach(r => {
+      resetPlayers[r.id] = {
+        name: r.rawName,
+        animal: r.animal,
+        isHost: r.isHost,
+        progress: 0,
+        wpm: 0,
+        running: false,
+        finishDuration: null
+      };
+    });
+    roomRef.update({
+      status: "waiting",
+      text: nextText,
+      players: resetPlayers
+    });
+  }
+});
+
+document.getElementById("copy-code-btn").addEventListener("click", () => {
+  if (!currentRoomCode) return;
+  navigator.clipboard.writeText(currentRoomCode);
+  const btn = document.getElementById("copy-code-btn");
+  btn.textContent = "✅ ¡Copiado!";
+  setTimeout(() => { btn.textContent = "📋 Copiar"; }, 1800);
+});
 
 document.getElementById("typing-wrapper").addEventListener("click", () => {
   if (raceActive) typingInput.focus();
 });
 
-function setupRace() {
+// ==========================================
+// LÓGICA MULTIJUGADOR ONLINE (FIREBASE)
+// ==========================================
+function generateRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 4; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+async function createOnlineRoom() {
+  if (!db) {
+    alert("No se pudo conectar con Firebase. Revisa tu conexión a internet.");
+    return;
+  }
+
+  const rawName = document.getElementById("player-name").value.trim();
+  playerName = rawName || ANIMALS[selectedAnimal].label;
+  isOnline = true;
+  isHost = true;
+  currentRoomCode = generateRoomCode();
+
+  const pool = TEXT_BANK[selectedMode];
+  const initialText = pool[Math.floor(Math.random() * pool.length)];
+
+  roomRef = db.ref(`rooms/${currentRoomCode}`);
+  await roomRef.set({
+    status: "waiting",
+    mode: selectedMode,
+    text: initialText,
+    createdAt: Date.now(),
+    players: {
+      [myPlayerId]: {
+        name: playerName,
+        animal: selectedAnimal,
+        isHost: true,
+        progress: 0,
+        wpm: 0,
+        running: false,
+        finishDuration: null
+      }
+    }
+  });
+
+  roomRef.onDisconnect().remove();
+  listenToRoom();
+}
+
+async function joinOnlineRoom() {
+  if (!db) {
+    alert("No se pudo conectar con Firebase. Revisa tu conexión a internet.");
+    return;
+  }
+
+  const codeInput = document.getElementById("room-code-input").value.trim().toUpperCase();
+  if (codeInput.length !== 4) {
+    alert("Escribe el código de 4 letras de la sala.");
+    return;
+  }
+
+  const snap = await db.ref(`rooms/${codeInput}`).once("value");
+  if (!snap.exists()) {
+    alert("Esa sala no existe o ya terminó. Verifica el código.");
+    return;
+  }
+
+  const roomData = snap.val();
+  const currentPlayers = roomData.players ? Object.keys(roomData.players).length : 0;
+  if (currentPlayers >= 5) {
+    alert("La sala ya está llena (máximo 5 corredores).");
+    return;
+  }
+  if (roomData.status !== "waiting") {
+    alert("La carrera en esa sala ya comenzó. Espera a que terminen.");
+    return;
+  }
+
+  const rawName = document.getElementById("player-name").value.trim();
+  playerName = rawName || ANIMALS[selectedAnimal].label;
+  isOnline = true;
+  isHost = false;
+  currentRoomCode = codeInput;
+  selectedMode = roomData.mode || "normal";
+
+  roomRef = db.ref(`rooms/${currentRoomCode}`);
+  const myRef = roomRef.child(`players/${myPlayerId}`);
+  await myRef.set({
+    name: playerName,
+    animal: selectedAnimal,
+    isHost: false,
+    progress: 0,
+    wpm: 0,
+    running: false,
+    finishDuration: null
+  });
+
+  myRef.onDisconnect().remove();
+  listenToRoom();
+}
+
+document.getElementById("start-online-race-btn").addEventListener("click", () => {
+  if (!isOnline || !isHost || !roomRef) return;
+  roomRef.update({ status: "racing" });
+});
+
+function listenToRoom() {
+  roomRef.on("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) {
+      if (currentScreenState !== "lobby") {
+        alert("El anfitrión cerró la sala.");
+        goToLobby();
+      }
+      return;
+    }
+
+    selectedMode = data.mode;
+    targetText = data.text;
+    const playersObj = data.players || {};
+
+    racers = Object.keys(playersObj).map(id => {
+      const p = playersObj[id];
+      const isMe = id === myPlayerId;
+      return {
+        id,
+        rawName: p.name,
+        name: isMe ? `${p.name} (Tú)` : p.name,
+        animal: p.animal,
+        isHost: !!p.isHost,
+        progress: p.progress || 0,
+        wpm: p.wpm || 0,
+        running: !!p.running,
+        finishDuration: p.finishDuration || null,
+        isMe
+      };
+    });
+
+    if (data.status === "waiting") {
+      if (currentScreenState !== "waiting") {
+        stopAllTimers();
+        currentScreenState = "waiting";
+        renderWaitingRoom();
+        showOnlyScreen(waitingScreen);
+      } else {
+        renderWaitingRoom();
+      }
+    } else if (data.status === "racing") {
+      if (currentScreenState !== "racing" && currentScreenState !== "podium") {
+        currentScreenState = "racing";
+        prepareRaceUI();
+        startCountdown();
+      } else if (currentScreenState === "racing") {
+        updateTrackUI();
+        // Si todos terminaron, mostrar podio
+        if (racers.length > 0 && racers.every(r => r.finishDuration !== null)) {
+          finishRace();
+        }
+      }
+    }
+  });
+}
+
+function renderWaitingRoom() {
+  document.getElementById("display-room-code").textContent = currentRoomCode;
+  document.getElementById("waiting-mode-badge").textContent =
+    selectedMode === "normal" ? "🌸 Escritura Normal" : "🧩 Modo Programación";
+  document.getElementById("players-count-label").textContent =
+    `Corredores en la pista (${racers.length}/5):`;
+
+  const grid = document.getElementById("waiting-players-grid");
+  let html = "";
+
+  for (let i = 0; i < 5; i++) {
+    const r = racers[i];
+    if (r) {
+      html += `
+        <div class="waiting-slot">
+          <div class="waiting-avatar">${getAnimalSVG(r.animal, "idle")}</div>
+          <div class="waiting-name">${escapeHtml(r.name)}</div>
+          ${r.isHost ? `<span class="host-badge">👑 Anfitrión</span>` : ""}
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="waiting-slot empty-slot">
+          <span>Esperando jugador...</span>
+        </div>
+      `;
+    }
+  }
+  grid.innerHTML = html;
+
+  if (isHost) {
+    document.getElementById("host-controls").classList.remove("hidden");
+    document.getElementById("guest-wait-msg").classList.add("hidden");
+  } else {
+    document.getElementById("host-controls").classList.add("hidden");
+    document.getElementById("guest-wait-msg").classList.remove("hidden");
+  }
+}
+
+function syncMyOnlineProgress(force = false) {
+  if (!isOnline || !roomRef) return;
+  const now = Date.now();
+  if (!force && now - lastSyncTime < 140) return;
+  lastSyncTime = now;
+
+  const me = racers.find(r => r.isMe);
+  if (!me) return;
+
+  roomRef.child(`players/${myPlayerId}`).update({
+    progress: me.progress,
+    wpm: me.wpm,
+    running: me.running,
+    finishDuration: me.finishDuration || null
+  });
+}
+
+// ==========================================
+// LÓGICA MODO PRÁCTICA SOLO (BOTS)
+// ==========================================
+function setupSoloRace() {
   stopAllTimers();
+  isOnline = false;
+  isHost = false;
+  currentRoomCode = null;
+  currentScreenState = "racing";
+
   const rawName = document.getElementById("player-name").value.trim();
   playerName = rawName || ANIMALS[selectedAnimal].label;
 
-  // Elegir un texto distinto al anterior si es posible
   const pool = TEXT_BANK[selectedMode];
   let nextText = pool[Math.floor(Math.random() * pool.length)];
   if (pool.length > 1 && nextText === targetText) {
@@ -261,6 +578,23 @@ function setupRace() {
   }
   targetText = nextText;
 
+  const otherAnimals = Object.keys(ANIMALS).filter(k => k !== selectedAnimal);
+  racers = [
+    { id: "me", rawName: playerName, name: `${playerName} (Tú)`, animal: selectedAnimal, progress: 0, wpm: 0, finishDuration: null, isMe: true, running: false },
+    { id: "b1", rawName: "Bot León", name: `Bot ${ANIMALS[otherAnimals[0]].label}`, animal: otherAnimals[0], progress: 0, wpm: 0, speed: 62, finishDuration: null, isMe: false, running: false },
+    { id: "b2", rawName: "Bot Tigre", name: `Bot ${ANIMALS[otherAnimals[1]].label}`, animal: otherAnimals[1], progress: 0, wpm: 0, speed: 50, finishDuration: null, isMe: false, running: false },
+    { id: "b3", rawName: "Bot Conejo", name: `Bot ${ANIMALS[otherAnimals[2]].label}`, animal: otherAnimals[2], progress: 0, wpm: 0, speed: 41, finishDuration: null, isMe: false, running: false },
+    { id: "b4", rawName: "Bot Zorro", name: `Bot ${ANIMALS[otherAnimals[3]].label}`, animal: otherAnimals[3], progress: 0, wpm: 0, speed: 33, finishDuration: null, isMe: false, running: false }
+  ];
+
+  prepareRaceUI();
+  startCountdown();
+}
+
+// ==========================================
+// MOTOR COMÚN DE CARRERA Y PODIO
+// ==========================================
+function prepareRaceUI() {
   totalKeystrokes = 0;
   errorKeystrokes = 0;
   currentStreak = 0;
@@ -272,22 +606,24 @@ function setupRace() {
   document.getElementById("accuracy-display").textContent = "100%";
   document.getElementById("streak-display").textContent = "0 ✨";
 
-  const otherAnimals = Object.keys(ANIMALS).filter(k => k !== selectedAnimal);
-  racers = [
-    { id: "me", name: `${playerName} (Tú)`, animal: selectedAnimal, progress: 0, wpm: 0, finishedAt: null, isMe: true, running: false },
-    { id: "b1", name: `Bot ${ANIMALS[otherAnimals[0]].label}`, animal: otherAnimals[0], progress: 0, wpm: 0, speed: 62, finishedAt: null, isMe: false, running: false },
-    { id: "b2", name: `Bot ${ANIMALS[otherAnimals[1]].label}`, animal: otherAnimals[1], progress: 0, wpm: 0, speed: 50, finishedAt: null, isMe: false, running: false },
-    { id: "b3", name: `Bot ${ANIMALS[otherAnimals[2]].label}`, animal: otherAnimals[2], progress: 0, wpm: 0, speed: 41, finishedAt: null, isMe: false, running: false },
-    { id: "b4", name: `Bot ${ANIMALS[otherAnimals[3]].label}`, animal: otherAnimals[3], progress: 0, wpm: 0, speed: 33, finishedAt: null, isMe: false, running: false }
-  ];
+  const newTextBtn = document.getElementById("new-text-btn");
+  const roomTag = document.getElementById("race-room-tag");
+
+  if (isOnline) {
+    newTextBtn.classList.add("hidden");
+    roomTag.textContent = `Sala: ${currentRoomCode}`;
+    roomTag.classList.remove("hidden");
+  } else {
+    newTextBtn.classList.remove("hidden");
+    roomTag.classList.add("hidden");
+  }
 
   renderTrack();
   renderText("");
+  showOnlyScreen(raceScreen);
+}
 
-  lobbyScreen.classList.add("hidden");
-  podiumScreen.classList.add("hidden");
-  raceScreen.classList.remove("hidden");
-
+function startCountdown() {
   let count = 3;
   countdownOverlay.classList.remove("hidden");
   countdownOverlay.textContent = count;
@@ -312,31 +648,32 @@ function startRace() {
   startTime = Date.now();
   typingInput.focus();
 
-  racers.forEach(r => {
-    if (!r.isMe) r.running = true;
-  });
+  if (!isOnline) {
+    racers.forEach(r => { if (!r.isMe) r.running = true; });
+    botInterval = setInterval(() => {
+      if (!raceActive) return;
+      const elapsedMin = (Date.now() - startTime) / 60000;
 
-  botInterval = setInterval(() => {
-    if (!raceActive) return;
-    const elapsedMin = (Date.now() - startTime) / 60000;
-
-    racers.forEach(r => {
-      if (!r.isMe && r.progress < 100) {
-        const charsPerSec = (r.speed * 5) / 60;
-        const jitter = 0.75 + Math.random() * 0.5;
-        const deltaPercent = ((charsPerSec * 0.2 * jitter) / targetText.length) * 100;
-        r.progress = Math.min(100, r.progress + deltaPercent);
-        r.wpm = Math.round(((r.progress / 100) * targetText.length / 5) / Math.max(elapsedMin, 0.01));
-        if (r.progress >= 100 && !r.finishedAt) {
-          r.finishedAt = Date.now();
-          r.running = false;
+      racers.forEach(r => {
+        if (!r.isMe && r.progress < 100) {
+          const charsPerSec = (r.speed * 5) / 60;
+          const jitter = 0.75 + Math.random() * 0.5;
+          const deltaPercent = ((charsPerSec * 0.2 * jitter) / targetText.length) * 100;
+          r.progress = Math.min(100, r.progress + deltaPercent);
+          r.wpm = Math.round(((r.progress / 100) * targetText.length / 5) / Math.max(elapsedMin, 0.01));
+          if (r.progress >= 100 && r.finishDuration === null) {
+            r.finishDuration = Date.now() - startTime;
+            r.running = false;
+          }
         }
-      }
-    });
+      });
 
-    updateTrackUI();
-    checkAllFinished();
-  }, 200);
+      updateTrackUI();
+      if (racers.every(r => r.finishDuration !== null)) {
+        finishRace();
+      }
+    }, 200);
+  }
 }
 
 typingInput.addEventListener("keydown", e => {
@@ -390,21 +727,30 @@ typingInput.addEventListener("input", () => {
   document.getElementById("streak-display").textContent = `${currentStreak} ✨`;
 
   const me = racers.find(r => r.isMe);
-  me.progress = progress;
-  me.wpm = wpm;
-  me.running = true;
+  if (me) {
+    me.progress = progress;
+    me.wpm = wpm;
+    me.running = true;
 
-  clearTimeout(typingStopTimer);
-  typingStopTimer = setTimeout(() => {
-    me.running = false;
-    updateTrackUI();
-  }, 450);
+    clearTimeout(typingStopTimer);
+    typingStopTimer = setTimeout(() => {
+      me.running = false;
+      updateTrackUI();
+      syncMyOnlineProgress(true);
+    }, 450);
 
-  if (typed === targetText && !me.finishedAt) {
-    me.finishedAt = Date.now();
-    me.running = false;
-    playBeep(987, 0.35);
-    finishRace();
+    if (typed === targetText && me.finishDuration === null) {
+      me.finishDuration = Date.now() - startTime;
+      me.running = false;
+      playBeep(987, 0.35);
+      syncMyOnlineProgress(true);
+
+      if (!isOnline || racers.every(r => r.finishDuration !== null)) {
+        finishRace();
+      }
+    } else {
+      syncMyOnlineProgress(false);
+    }
   }
 
   updateTrackUI();
@@ -433,7 +779,7 @@ function renderTrack() {
       <div class="racer" id="racer-${r.id}">
         <span class="dust-puff">💨</span>
         <div class="racer-sprite">${getAnimalSVG(r.animal, "running")}</div>
-        <span class="racer-tag">${r.name}</span>
+        <span class="racer-tag">${escapeHtml(r.name)}</span>
       </div>
       <span class="lane-wpm" id="wpm-${r.id}">0 PPM</span>
       <div class="finish-line"></div>
@@ -442,6 +788,11 @@ function renderTrack() {
 }
 
 function updateTrackUI() {
+  // Si en online entró/salió alguien, reconstruir carriles si cambia la cantidad
+  if (trackContainer.children.length !== racers.length) {
+    renderTrack();
+  }
+
   racers.forEach(r => {
     const racerEl = document.getElementById(`racer-${r.id}`);
     const wpmEl = document.getElementById(`wpm-${r.id}`);
@@ -459,19 +810,15 @@ function updateTrackUI() {
   });
 }
 
-function checkAllFinished() {
-  if (racers.every(r => r.finishedAt !== null)) {
-    finishRace();
-  }
-}
-
 function finishRace() {
+  if (currentScreenState === "podium") return;
   stopAllTimers();
+  currentScreenState = "podium";
 
   const sorted = [...racers].sort((a, b) => {
-    if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
-    if (a.finishedAt) return -1;
-    if (b.finishedAt) return 1;
+    if (a.finishDuration !== null && b.finishDuration !== null) return a.finishDuration - b.finishDuration;
+    if (a.finishDuration !== null) return -1;
+    if (b.finishDuration !== null) return 1;
     return b.progress - a.progress;
   });
 
@@ -492,7 +839,7 @@ function finishRace() {
         <div class="podium-character ${slot.cssClass}">
           ${getAnimalSVG(slot.data.animal, slot.pose)}
         </div>
-        <div class="podium-name">${slot.data.name}</div>
+        <div class="podium-name">${escapeHtml(slot.data.name)}</div>
         <div class="podium-stats">${slot.data.wpm} PPM</div>
         <div class="podium-block ${slot.blockClass}">
           <span class="podium-rank">${slot.medal}</span>
@@ -510,11 +857,19 @@ function finishRace() {
     fifthNote.classList.add("hidden");
   }
 
+  // Configurar botón de revancha según si es anfitrión o invitado
+  const playAgainBtn = document.getElementById("play-again-btn");
+  if (isOnline && !isHost) {
+    playAgainBtn.classList.add("hidden");
+  } else {
+    playAgainBtn.classList.remove("hidden");
+    playAgainBtn.textContent = isOnline ? "🔄 Nueva Ronda en la Sala" : "🔄 Correr de Nuevo";
+  }
+
   launchConfetti();
 
   setTimeout(() => {
-    raceScreen.classList.add("hidden");
-    podiumScreen.classList.remove("hidden");
+    showOnlyScreen(podiumScreen);
   }, 550);
 }
 
@@ -532,5 +887,5 @@ function launchConfetti() {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

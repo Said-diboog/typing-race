@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AnimalType | Carrera Pastel de Mecanografía</title>
+  <title>AnimalType | Carrera Pastel Multijugador</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
   <div class="app-container">
     <header class="top-header">
       <h1>🐾 Animal<span>Type</span></h1>
-      <p class="subtitle">Carrera de Velocidad • Elige tu corredor y conquista el podio</p>
+      <p class="subtitle">Carrera Pastel Online • Compite hasta con 5 amigos en tiempo real</p>
     </header>
 
     <!-- PANTALLA 1: LOBBY / CONFIGURACIÓN -->
@@ -28,12 +28,12 @@
       <h2>Prepara tu corredor</h2>
 
       <div class="form-group">
-        <label for="player-name">Tu Apodo:</label>
+        <label for="player-name">1. Tu Apodo:</label>
         <input type="text" id="player-name" maxlength="15" placeholder="Ej. VelozLeo" />
       </div>
 
       <div class="form-group">
-        <label>Elige tu Animal:</label>
+        <label>2. Elige tu Animal:</label>
         <div class="avatar-grid" id="avatar-selector">
           <button type="button" class="avatar-btn selected" data-animal="leon">
             <div class="avatar-preview" data-preview="leon"></div>
@@ -63,7 +63,7 @@
       </div>
 
       <div class="form-group">
-        <label>Modo de Carrera:</label>
+        <label>3. Modo de Texto (para Práctica o Crear Sala):</label>
         <div class="mode-grid">
           <button type="button" class="mode-btn selected" data-mode="normal">
             <strong>🌸 Escritura Normal</strong>
@@ -76,14 +76,68 @@
         </div>
       </div>
 
-      <button id="start-btn" class="primary-btn">🏁 ¡Ir a la Pista!</button>
+      <!-- OPCIONES DE PARTIDA: ONLINE O BOTS -->
+      <div class="play-options-box">
+        <div class="online-actions">
+          <button type="button" id="create-room-btn" class="primary-btn">
+            👑 Crear Sala Online (5 Jugadores)
+          </button>
+
+          <div class="join-box">
+            <input type="text" id="room-code-input" maxlength="4" placeholder="CÓDIGO" />
+            <button type="button" id="join-room-btn" class="pastel-mint-btn">
+              🎟️ Unirse a Sala
+            </button>
+          </div>
+        </div>
+
+        <div class="divider-text"><span>o entrena por tu cuenta</span></div>
+
+        <button type="button" id="start-solo-btn" class="secondary-btn">
+          🤖 Práctica Rápida contra 4 Bots
+        </button>
+      </div>
+    </section>
+
+    <!-- PANTALLA 1.5: SALA DE ESPERA ONLINE -->
+    <section id="waiting-screen" class="card hidden">
+      <div class="waiting-header">
+        <span class="badge-mode" id="waiting-mode-badge">🌸 Escritura Normal</span>
+        <h2>Sala de Espera Online</h2>
+        <div class="room-code-banner">
+          <span>Comparte este código con tus amigos:</span>
+          <div class="code-display-row">
+            <strong id="display-room-code">----</strong>
+            <button type="button" id="copy-code-btn" class="mini-pastel-btn btn-sky">📋 Copiar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="players-lobby-box">
+        <div class="players-count-label" id="players-count-label">Corredores listos (1/5):</div>
+        <div class="waiting-players-grid" id="waiting-players-grid"></div>
+      </div>
+
+      <div id="host-controls" class="waiting-actions hidden">
+        <button type="button" id="start-online-race-btn" class="primary-btn">
+          🏁 ¡Iniciar Carrera Ahora!
+        </button>
+      </div>
+
+      <p id="guest-wait-msg" class="guest-wait-msg hidden">
+        ⏳ Esperando a que el anfitrión inicie la carrera...
+      </p>
+
+      <button type="button" id="leave-room-btn" class="secondary-btn" style="margin-top: 12px;">
+        🚪 Salir de la Sala
+      </button>
     </section>
 
     <!-- PANTALLA 2: PISTA DE CARRERA -->
     <section id="race-screen" class="card hidden">
-      <!-- Barra superior de acciones rápidas en plena carrera -->
       <div class="race-top-bar">
         <button type="button" id="new-text-btn" class="mini-pastel-btn btn-sky">🔄 Cambiar Texto</button>
+        <span id="race-room-tag" class="room-pill hidden">Sala: ----</span>
         <button type="button" id="abort-race-btn" class="mini-pastel-btn btn-rose">🏠 Finalizar y Volver al Inicio</button>
       </div>
 
@@ -162,11 +216,14 @@
 
       <div class="podium-actions">
         <button id="play-again-btn" class="primary-btn">🔄 Correr de Nuevo</button>
-        <button id="back-lobby-btn" class="secondary-btn">🐾 Cambiar Animal / Modo</button>
+        <button id="back-lobby-btn" class="secondary-btn">🐾 Volver al Inicio</button>
       </div>
     </section>
   </div>
 
+  <!-- Firebase SDK (App + Realtime Database) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
