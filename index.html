@@ -3,34 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeRace 5P | Carrera de Mecanografía</title>
+  <title>AnimalType | Carrera Pastel de Mecanografía</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Nubes decorativas de fondo -->
+  <div class="sky-decor">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+  </div>
+
   <div class="app-container">
     <header class="top-header">
-      <h1>⚡ Code<span>Race</span> 5P</h1>
-      <p class="subtitle">Ingeniería de Software y Sistemas — Competencia de Velocidad</p>
+      <h1>🐾 Animal<span>Type</span></h1>
+      <p class="subtitle">Carrera de Velocidad • Elige tu corredor y conquista el podio</p>
     </header>
 
     <!-- PANTALLA 1: LOBBY / CONFIGURACIÓN -->
     <section id="lobby-screen" class="card">
-      <h2>Configura tu corredor</h2>
+      <h2>Prepara tu corredor</h2>
 
       <div class="form-group">
         <label for="player-name">Tu Apodo:</label>
-        <input type="text" id="player-name" maxlength="15" placeholder="Ej. DevMaster" />
+        <input type="text" id="player-name" maxlength="15" placeholder="Ej. VelozLeo" />
       </div>
 
       <div class="form-group">
-        <label>Elige tu Avatar:</label>
+        <label>Elige tu Animal:</label>
         <div class="avatar-grid" id="avatar-selector">
-          <button type="button" class="avatar-btn selected" data-avatar="🚀">🚀<span>Nave</span></button>
-          <button type="button" class="avatar-btn" data-avatar="🤖">🤖<span>Bot</span></button>
-          <button type="button" class="avatar-btn" data-avatar="🐱">🐱<span>Hacker</span></button>
-          <button type="button" class="avatar-btn" data-avatar="⚡">⚡<span>Flash</span></button>
-          <button type="button" class="avatar-btn" data-avatar="🐉">🐉<span>Dragón</span></button>
-          <button type="button" class="avatar-btn" data-avatar="👾">👾<span>Alien</span></button>
+          <button type="button" class="avatar-btn selected" data-animal="leon">
+            <div class="avatar-preview" data-preview="leon"></div>
+            <span>León</span>
+          </button>
+          <button type="button" class="avatar-btn" data-animal="tigre">
+            <div class="avatar-preview" data-preview="tigre"></div>
+            <span>Tigre</span>
+          </button>
+          <button type="button" class="avatar-btn" data-animal="conejo">
+            <div class="avatar-preview" data-preview="conejo"></div>
+            <span>Conejo</span>
+          </button>
+          <button type="button" class="avatar-btn" data-animal="zorro">
+            <div class="avatar-preview" data-preview="zorro"></div>
+            <span>Zorro</span>
+          </button>
+          <button type="button" class="avatar-btn" data-animal="panda">
+            <div class="avatar-preview" data-preview="panda"></div>
+            <span>Panda</span>
+          </button>
+          <button type="button" class="avatar-btn" data-animal="koala">
+            <div class="avatar-preview" data-preview="koala"></div>
+            <span>Koala</span>
+          </button>
         </div>
       </div>
 
@@ -38,42 +66,72 @@
         <label>Modo de Carrera:</label>
         <div class="mode-grid">
           <button type="button" class="mode-btn selected" data-mode="normal">
-            <strong>📝 Escritura Normal</strong>
-            <small>Textos con tildes, mayúsculas, comas y puntos.</small>
+            <strong>🌸 Escritura Normal</strong>
+            <small>Textos cotidianos con tildes, mayúsculas, comas y puntos.</small>
           </button>
           <button type="button" class="mode-btn" data-mode="code">
-            <strong>💻 Modo Programación</strong>
+            <strong>🧩 Modo Programación</strong>
             <small>Bucles for/while, sumas y algoritmos en Python, C++ y Java.</small>
           </button>
         </div>
       </div>
 
-      <button id="start-btn" class="primary-btn">🏁 ¡Entrar a la Pista!</button>
+      <button id="start-btn" class="primary-btn">🏁 ¡Ir a la Pista!</button>
     </section>
 
     <!-- PANTALLA 2: PISTA DE CARRERA -->
     <section id="race-screen" class="card hidden">
       <div class="stats-bar">
-        <div class="stat-box">
+        <div class="stat-box pastel-blue">
           <span class="stat-label">MODO</span>
           <span id="current-mode-label" class="stat-value">Normal</span>
         </div>
-        <div class="stat-box">
+        <div class="stat-box pastel-mint">
           <span class="stat-label">VELOCIDAD</span>
           <span id="wpm-display" class="stat-value">0 PPM</span>
         </div>
-        <div class="stat-box">
+        <div class="stat-box pastel-peach">
           <span class="stat-label">PRECISIÓN</span>
           <span id="accuracy-display" class="stat-value">100%</span>
         </div>
-        <div class="stat-box">
+        <div class="stat-box pastel-lavender">
           <span class="stat-label">RACHA</span>
-          <span id="streak-display" class="stat-value">0 🔥</span>
+          <span id="streak-display" class="stat-value">0 ✨</span>
         </div>
       </div>
 
-      <!-- PISTA DE 5 CARRILES -->
-      <div class="track-container" id="track-container"></div>
+      <!-- ESCENARIO DE PISTA CON AFICIÓN Y ARBUSTOS -->
+      <div class="stadium-wrapper">
+        <!-- Tribuna con afición alentando -->
+        <div class="grandstand">
+          <div class="stand-banner">📣 ¡VAMOS CORREDORES! 📣</div>
+          <div class="crowd-row" id="crowd-row"></div>
+        </div>
+
+        <!-- Borde superior de pasto con arbustos y flores -->
+        <div class="grass-border top-grass">
+          <div class="bush b1"></div>
+          <div class="flower f1">🌼</div>
+          <div class="bush b2"></div>
+          <div class="flower f2">🌷</div>
+          <div class="bush b3"></div>
+          <div class="flower f3">🌸</div>
+          <div class="bush b4"></div>
+        </div>
+
+        <!-- 5 Carriles de tierra pastel -->
+        <div class="track-container" id="track-container"></div>
+
+        <!-- Borde inferior de pasto con arbustos y flores -->
+        <div class="grass-border bottom-grass">
+          <div class="flower f2">🌸</div>
+          <div class="bush b2"></div>
+          <div class="flower f1">🌼</div>
+          <div class="bush b4"></div>
+          <div class="flower f3">🌷</div>
+          <div class="bush b1"></div>
+        </div>
+      </div>
 
       <!-- ÁREA DE TEXTO A ESCRIBIR -->
       <div class="typing-wrapper" id="typing-wrapper">
@@ -87,17 +145,23 @@
           autocorrect="off"
           spellcheck="false"
         ></textarea>
-        <p class="hint-text">Haz clic sobre el texto si pierdes el foco • Usa <b>Backspace</b> para corregir errores</p>
+        <p class="hint-text">Haz clic sobre el texto si pierdes el foco • Usa <b>Backspace</b> para corregir</p>
       </div>
     </section>
 
-    <!-- PANTALLA 3: PODIO FINAL -->
+    <!-- PANTALLA 3: PODIO FINAL (TOP 4) -->
     <section id="podium-screen" class="card hidden">
-      <h2>🏆 Resultados de la Carrera</h2>
-      <div id="podium-list" class="podium-list"></div>
+      <h2>🏆 Podio de los 4 Primeros Lugares</h2>
+      <div class="confetti-container" id="confetti-container"></div>
+
+      <!-- Escenario visual de escalones (2°, 1°, 3°, 4°) -->
+      <div class="podium-stage" id="podium-stage"></div>
+
+      <p id="fifth-place-note" class="fifth-note hidden"></p>
+
       <div class="podium-actions">
         <button id="play-again-btn" class="primary-btn">🔄 Correr de Nuevo</button>
-        <button id="back-lobby-btn" class="secondary-btn">⚙️ Cambiar Modo / Avatar</button>
+        <button id="back-lobby-btn" class="secondary-btn">🐾 Cambiar Animal / Modo</button>
       </div>
     </section>
   </div>
