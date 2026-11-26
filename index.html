@@ -81,6 +81,12 @@
 
     <!-- PANTALLA 2: PISTA DE CARRERA -->
     <section id="race-screen" class="card hidden">
+      <!-- Barra superior de acciones rápidas en plena carrera -->
+      <div class="race-top-bar">
+        <button type="button" id="new-text-btn" class="mini-pastel-btn btn-sky">🔄 Cambiar Texto</button>
+        <button type="button" id="abort-race-btn" class="mini-pastel-btn btn-rose">🏠 Finalizar y Volver al Inicio</button>
+      </div>
+
       <div class="stats-bar">
         <div class="stat-box pastel-blue">
           <span class="stat-label">MODO</span>
@@ -102,13 +108,11 @@
 
       <!-- ESCENARIO DE PISTA CON AFICIÓN Y ARBUSTOS -->
       <div class="stadium-wrapper">
-        <!-- Tribuna con afición alentando -->
         <div class="grandstand">
           <div class="stand-banner">📣 ¡VAMOS CORREDORES! 📣</div>
           <div class="crowd-row" id="crowd-row"></div>
         </div>
 
-        <!-- Borde superior de pasto con arbustos y flores -->
         <div class="grass-border top-grass">
           <div class="bush b1"></div>
           <div class="flower f1">🌼</div>
@@ -119,10 +123,8 @@
           <div class="bush b4"></div>
         </div>
 
-        <!-- 5 Carriles de tierra pastel -->
         <div class="track-container" id="track-container"></div>
 
-        <!-- Borde inferior de pasto con arbustos y flores -->
         <div class="grass-border bottom-grass">
           <div class="flower f2">🌸</div>
           <div class="bush b2"></div>
@@ -154,7 +156,6 @@
       <h2>🏆 Podio de los 4 Primeros Lugares</h2>
       <div class="confetti-container" id="confetti-container"></div>
 
-      <!-- Escenario visual de escalones (2°, 1°, 3°, 4°) -->
       <div class="podium-stage" id="podium-stage"></div>
 
       <p id="fifth-place-note" class="fifth-note hidden"></p>

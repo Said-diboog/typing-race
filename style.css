@@ -276,6 +276,42 @@ input[type="text"]:focus {
   background: #cbd5e1;
 }
 
+/* Barra superior dentro de la carrera */
+.race-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mini-pastel-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.mini-pastel-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
+}
+
+.btn-sky {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1.5px solid #bae6fd;
+}
+
+.btn-rose {
+  background: #ffe4e6;
+  color: #be123c;
+  border: 1.5px solid #fecdd3;
+}
+
 /* Estadísticas superiores en pastel */
 .stats-bar {
   display: grid;
@@ -317,7 +353,6 @@ input[type="text"]:focus {
   box-shadow: 0 8px 20px rgba(116, 198, 157, 0.18);
 }
 
-/* Tribuna con afición */
 .grandstand {
   background: linear-gradient(180deg, #ffe5ec 0%, #ffc2d1 100%);
   padding: 6px 12px 4px;
@@ -384,7 +419,6 @@ input[type="text"]:focus {
   100% { transform: rotate(18deg); }
 }
 
-/* Borde de pasto con arbustos */
 .grass-border {
   background: var(--grass-green);
   height: 24px;
@@ -419,7 +453,6 @@ input[type="text"]:focus {
   user-select: none;
 }
 
-/* Pista de 5 carriles */
 .track-container {
   background: var(--track-clay);
   padding: 6px 10px;
